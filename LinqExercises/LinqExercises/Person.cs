@@ -77,5 +77,11 @@ namespace LinqExercises
         {
 			return HashCode.Combine(FirstName, LastName, Gender, DateOfBirth);
 		}
+
+
+		public Person Clone()
+        {
+			return new Person(FirstName, LastName, DateOfBirth, Gender);
+        }
     }
 }

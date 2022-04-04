@@ -9,8 +9,51 @@ namespace LinqExercises
     {
         static void Main(string[] args)
         {
+            //V1
+            /*
+            var query = from product in ProductsDatabase.AllProducts
+                        join category in ProductsDatabase.AllCategories
+                        on product.CategoryId equals category.Id into categoriesGroup 
+                        select new
+                        {
+                            Product = product,
+                            Category = categoriesGroup.DefaultIfEmpty(new Category(-1, "N/A")).Single()
+                        };
+            */
 
-            SetOperators_Union_Example();
+            //V2
+            /*
+            var query = from product in ProductsDatabase.AllProducts
+                        join category in ProductsDatabase.AllCategories
+                        on product.CategoryId equals category.Id into categoriesGroup
+                        from catOrDefault in categoriesGroup.DefaultIfEmpty(new Category(-1, "N/A"))
+                        select new
+                        {
+                            Product = product,
+                            Category = catOrDefault
+                        };
+            */
+            var query = ProductsDatabase.AllProducts.GroupJoin(
+                ProductsDatabase.AllCategories,
+                product => product.CategoryId,
+                category => category.Id,
+                (product, categories) => new
+                {
+                    Product = product,
+                    Categories = categories
+                }).SelectMany(
+                    groupJoin => groupJoin.Categories.DefaultIfEmpty(new Category(-1, "N/A")),
+                    (groupJoin, category) => new
+                    {
+                        Product = groupJoin.Product,
+                        Category = category
+                    }
+                );
+
+            foreach (var pair in query)
+            {
+                Console.WriteLine($"{pair.Product.Id}) {pair.Product.Name}, category: {pair.Category.Name}");
+            }
         }
 
 
@@ -20,7 +63,7 @@ namespace LinqExercises
             return personFilter(p);
         }
 
-        private static void PrintSeparator (string label)
+        private static void PrintSeparator(string label)
         {
             Console.WriteLine("----------------------------------------------------");
             Console.WriteLine(label);
@@ -408,6 +451,290 @@ namespace LinqExercises
             foreach (var element in query)
             {
                 Console.Write($"{element}, ");
+            }
+        }
+
+        private static void AggregateFunctions_Count_Example()
+        {
+            int[] array = new[] { 1, 2, 3, 4 };
+            Console.WriteLine(array.Length);
+
+            List<string> genericList = new List<string>();
+            genericList.AddRange(new[] { "test1", "test2" });
+            Console.WriteLine(genericList.Count);
+
+            int nrOfPersons = PersonsDatabase.AllPersons.Count();
+
+            int filterPersons = PersonsDatabase.AllPersons.Count(
+                person => person.LastName.StartsWith("D", StringComparison.OrdinalIgnoreCase));
+
+            Console.WriteLine(nrOfPersons);
+            Console.WriteLine(filterPersons);
+        }
+
+        private static void Aggregate_Min()
+        {
+
+            int[] array = { 5, 4, 3, 2, 1 };
+
+            int min = array.Min();
+
+            Console.WriteLine(min);
+
+            int minAge = PersonsDatabase.AllPersons.Min(person => person.Age);
+
+            var query = PersonsDatabase.AllPersons.Where(person => person.Age == minAge);
+
+            Console.WriteLine($"Min age={minAge}");
+            foreach (var person in query)
+            {
+                person.Print();
+            }
+        }
+
+        private static void Aggregate_Average()
+        {
+            int[] array = { 5, 4, 3, 2, 1 };
+
+            double avg = array.Average();
+
+            Console.WriteLine(avg);
+
+            double avgAge = PersonsDatabase.AllPersons.Average(person => person.Age);
+
+            var query = PersonsDatabase.AllPersons.Where(person => person.Age == avgAge);
+
+            Console.WriteLine($"Min age={avgAge}");
+            foreach (var person in query)
+            {
+                person.Print();
+            }
+        }
+
+        private static void ElementReturn_First_FirstOrDefaulr()
+        {
+            //Throw error:
+            //int[] array = { 5,  3, 1 };
+            //int first = array.First(nr=> nr%2==0);
+
+
+            int[] array = { 5, 3, 1 };
+            int first = array.FirstOrDefault(nr => nr % 2 == 0);
+
+            Console.WriteLine(first);
+
+
+            Person p = PersonsDatabase.AllPersons.FirstOrDefault(person => person.LastName.StartsWith("Q", StringComparison.OrdinalIgnoreCase));
+            if (p is not null)
+            {
+                p.Print();
+            }
+            else
+            {
+                Console.WriteLine("No match!");
+            }
+        }
+
+
+        private static void ElementReturn_Single_SingleOrDefault()
+        {
+            int[] array = { 5, 4, 3 };
+            int single = array.Single(nr => nr % 2 == 0);
+
+            //in cazul in care are mai multe tot da eroare
+            //default daca nu se potrivenste nici un element sau nu am elemente
+            int singleOrD = array.SingleOrDefault(nr => nr % 6 == 0);
+
+            Console.WriteLine(single);
+            Console.WriteLine(singleOrD);
+        }
+
+        private static void EmenentReturn_ElementAt_ElementAtOrDefault()
+        {
+            int[] array = { 5, 4, 3 };
+            int value = array.ElementAt(2);
+
+
+            int valueDe = array.ElementAtOrDefault(20);
+
+            Console.WriteLine(value);
+            Console.WriteLine(valueDe);
+        }
+
+        private static void QuantifierFunctions_Any()
+        {
+            int[] array = { 1, 5 };
+            bool atLeastOne = array.Any(nr => nr % 2 == 0);
+
+            Console.WriteLine(atLeastOne);
+
+            bool AnyPerson = PersonsDatabase.AllPersons.Any(person => person.Age == 45);
+            if (AnyPerson)
+            {
+                Person p = PersonsDatabase.AllPersons.First(person => person.Age == 45);
+                p.Print();
+            }
+            else
+            {
+                Console.WriteLine("No person of 45");
+            }
+        }
+
+        private static void QuantifierFunctions_All()
+        {
+            bool allPersons = PersonsDatabase.AllPersons.All(person => person.Gender == Gender.Female);
+            if (allPersons)
+            {
+                Console.WriteLine("All females");
+            }
+            else
+            {
+                Console.WriteLine("Not all females");
+            }
+        }
+
+        private static void QuantifierFuncions_Contains()
+        {
+            int[] array = { 1, 2, 3, 4, 5 };
+            bool containsNr = array.Contains(13);
+            Console.WriteLine(containsNr);
+
+            Person p = PersonsDatabase.AllPersons.First();
+            bool containtPerson = PersonsDatabase.AllPersons.Contains(p);
+            Console.WriteLine($"Contains person {containtPerson}");
+
+            //trebuie implementat IEquatable, altfel compara referinte
+            Person clone = p.Clone();
+            bool containsClone = PersonsDatabase.AllPersons.Contains(clone, new PersonsComparer());
+            Console.WriteLine($"Contains Clone {containsClone}");
+        }
+
+
+        private static void _cointainsWithCompare()
+        {
+            int[] array = { 1, 2, 3, 4, 5 };
+            bool containsNr = array.Contains(13);
+            Console.WriteLine(containsNr);
+
+            Person p = PersonsDatabase.AllPersons.First();
+            bool containtPerson = PersonsDatabase.AllPersons.Contains(p);
+            Console.WriteLine($"Contains person {containtPerson}");
+
+            //trebuie implementat IEquatable, altfel compara referinte
+            Person clone = p.Clone();
+            bool containsClone = PersonsDatabase.AllPersons.Contains(
+                clone,
+                new LambdaEqualityComparer<Person>(
+                    (x, y) => (x is not null) && (y is not null) &&
+                    string.Equals(x.FirstName, y.FirstName, StringComparison.OrdinalIgnoreCase) &&
+                   string.Equals(x.LastName, y.LastName, StringComparison.OrdinalIgnoreCase) &&
+                   x.Gender == y.Gender &&
+                   x.DateOfBirth == y.DateOfBirth
+                    ));
+            Console.WriteLine($"Contains Clone {containsClone}");
+        }
+
+        private static void Joins_Join()
+        {
+            //(produc,category)
+            var query = from product in ProductsDatabase.AllProducts
+                        join category in ProductsDatabase.AllCategories
+                        on product.CategoryId equals category.Id
+                        select new
+                        {
+                            Product = product,
+                            Category = category
+                        };
+
+            foreach (var pair in query)
+            {
+                Console.WriteLine($"{pair.Product.Id}) {pair.Product.Name}, category: {pair.Category.Name}");
+            }
+        }
+
+        private static void Joins_GroupJoin()
+        {
+            /*
+            //(produc,category)
+            var query = from category in ProductsDatabase.AllCategories
+                        join product in ProductsDatabase.AllProducts
+                        on category.Id equals product.CategoryId into categoryGrup
+                        select new
+                        {
+                            Id = category.Id,
+                            CategoryName = category.Name,
+                            Products = categoryGrup
+                        };
+            */
+
+            var query = ProductsDatabase.AllCategories.GroupJoin(
+                ProductsDatabase.AllProducts,
+                category => category.Id,
+                product => product.CategoryId,
+                (category, categoryGrup) => new
+                {
+                    Id = category.Id,
+                    CategoryName = category.Name,
+                    Products = categoryGrup
+                });
+
+
+            foreach (var group in query)
+            {
+                Console.WriteLine($"{group.Id}) {group.CategoryName}");
+                foreach (var product in group.Products)
+                {
+                    Console.WriteLine($"    - {product.Id}) {product.Name}");
+                }
+            }
+        }
+
+        private static void Joins_LeftOuterJoin()
+        {
+            //V1
+            /*
+            var query = from product in ProductsDatabase.AllProducts
+                        join category in ProductsDatabase.AllCategories
+                        on product.CategoryId equals category.Id into categoriesGroup 
+                        select new
+                        {
+                            Product = product,
+                            Category = categoriesGroup.DefaultIfEmpty(new Category(-1, "N/A")).Single()
+                        };
+            */
+
+            //V2
+            /*
+            var query = from product in ProductsDatabase.AllProducts
+                        join category in ProductsDatabase.AllCategories
+                        on product.CategoryId equals category.Id into categoriesGroup
+                        from catOrDefault in categoriesGroup.DefaultIfEmpty(new Category(-1, "N/A"))
+                        select new
+                        {
+                            Product = product,
+                            Category = catOrDefault
+                        };
+            */
+            var query = ProductsDatabase.AllProducts.GroupJoin(
+                ProductsDatabase.AllCategories,
+                product => product.CategoryId,
+                category => category.Id,
+                (product, categories) => new
+                {
+                    Product = product,
+                    Categories = categories
+                }).SelectMany(
+                    groupJoin => groupJoin.Categories.DefaultIfEmpty(new Category(-1, "N/A")),
+                    (groupJoin, category) => new
+                    {
+                        Product = groupJoin.Product,
+                        Category = category
+                    }
+                );
+
+            foreach (var pair in query)
+            {
+                Console.WriteLine($"{pair.Product.Id}) {pair.Product.Name}, category: {pair.Category.Name}");
             }
         }
     }
